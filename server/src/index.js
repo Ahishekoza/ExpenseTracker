@@ -5,6 +5,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import connectDB from '../config/db.js';
 import userRouter from './routes/userRouter.js'
+import transactionRouter from './routes/transactionRouter.js'
 
 connectDB()
 
@@ -14,7 +15,7 @@ app.use(morgan('dev'))
 app.use(express.json())
 app.use(cors())
 
-app.use('/api',userRouter)
+app.use('/api',userRouter,transactionRouter)
 
 app.listen(process.env.PORT,()=>{
     console.log(`listening on port ${process.env.PORT}`)
