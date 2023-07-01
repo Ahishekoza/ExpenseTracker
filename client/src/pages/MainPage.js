@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { Button, Form, Input, Modal, Select, Table,DatePicker } from "antd";
-import { UnorderedListOutlined, AreaChartOutlined } from  '@ant-design/icons'
+import { UnorderedListOutlined, AreaChartOutlined ,EditOutlined,DeleteOutlined} from  '@ant-design/icons'
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import moment from  'moment'
@@ -21,6 +21,7 @@ const MainPage = () => {
   const [selectDate,setSelectDate] = useState([])
   const [type,setType] = useState("All")
   const [viewData,setViewData] = useState("table")
+  const [edit ,setEdit] = useState(null)
 
   // Table Columns
   const columns = [
@@ -47,12 +48,31 @@ const MainPage = () => {
     },
     {
       title: "Actions",
+      render: (text,record)=>(
+        <div>
+          <EditOutlined onClick={()=>{
+            setEdit(record)
+            setShowModal(true)
+        
+          }}/>
+          <DeleteOutlined className="mx-3" onClick={()=>handleDelete(record._id)}/>
+        </div>
+      )
     },
   ];
 
+  const handleDelete =async(id)=>{
+    await axios.post(`${process.env.REACT_APP_EXPENSE_API}deleteTransaction`,{transactionId:id}).then((response)=>{
+      if(response.data.success){
+        alert("Transaction deleted successfully")
+        window.location.reload()
+      }
+    }).catch((error)=>{
+      console.log(error)
+    })
+  }
   
   const handleTransaction = async (event) => {
-    console.log(event)
     const amount = event.amount;
     const type = event.type;
     const category = event.category;
@@ -60,31 +80,46 @@ const MainPage = () => {
     const reference = event.reference;
     const description = event.description;
 
-    await axios.post(`${process.env.REACT_APP_EXPENSE_API}createTransaction`, {
-      amount: amount,
-      type: type,
-      category: category,
-      userId: user?._id,
-      date: date,
-      reference: reference,
-      description: description,
-    }).then((response)=>{
-      setTimeout(()=>{
-        alert("Transaction added successfully")
-      },900)
-      setShowModal(false)
-    }).catch((error)=>{
-      setTimeout(()=>{
-        console.log(error)
-        alert(`${error.message}`)
-      },1000)
-    })
+
+    if(edit !==null){
+      const transactionId = edit._id
+      await axios.put(`${process.env.REACT_APP_EXPENSE_API}updateTransaction`,{transactionId: transactionId,amount: amount,type:type,
+        category:category,date:date,reference:reference,description:description}).then((response)=>{
+         if(response.data.success){
+          alert(`${response.data.message}`)
+          
+          window.location.reload()
+         }
+        })
+    }
+
+
+    else{
+      await axios.post(`${process.env.REACT_APP_EXPENSE_API}createTransaction`, {
+        amount: amount,
+        type: type,
+        category: category,
+        userId: user?._id,
+        date: date,
+        reference: reference,
+        description: description,
+      }).then((response)=>{
+        setTimeout(()=>{
+          alert("Transaction added successfully")
+        },900)
+        setShowModal(false)
+      }).catch((error)=>{
+        setTimeout(()=>{
+          console.log(error)
+          alert(`${error.message}`)
+        },1000)
+      })
+    }
   };
 
 
 
   useEffect(()=>{
-    console.log(selectDate)
     const getAllTransactions = async() =>{
       const userId =  user._id
   
@@ -93,7 +128,6 @@ const MainPage = () => {
         if(response.data.sucess){
           setTransactions(response.data.Transactions)
         }
-        console.log(response.data.Transactions)
         setLoading(false)
       }).catch((error)=>{
         alert(`${error.message}`)
@@ -101,7 +135,7 @@ const MainPage = () => {
       )
     }
     getAllTransactions()
-  },[frequency,user._id,selectDate,type])
+  },[frequency,user._id,selectDate,type,edit])
 
   return (
     <Layout>
@@ -144,12 +178,12 @@ const MainPage = () => {
         {viewData === 'table'? <Table columns={columns} dataSource={transactions}/> : <Analytics alltransactions={transactions}/>}
       </div>
       <Modal
-        title="Add Transaction"
+        title={edit?  "EDIT TRANSACTION" : "ADD TRANSACTION"}
         open={showModal}
         onCancel={() => setShowModal(false)}
         footer={false}
       >
-        <Form layout="vertical" onFinish={handleTransaction}>
+        <Form layout="vertical" onFinish={handleTransaction} initialValues={edit}>
           <Form.Item label="Amount" name="amount" className="my-2">
             <Input type="number" />
           </Form.Item>
